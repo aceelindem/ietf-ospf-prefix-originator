@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!-- edited with XMLSPY v5 rel. 3 U (http://www.xmlspy.com)
+     by Daniel M Kohn (private) -->
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!ENTITY rfc2119 PUBLIC "" "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
+]>
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="3"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc compact="yes"?>
+<?rfc subcompact="no"?>
+<rfc category="std" docName="draft-ietf-lsr-ospf-prefix-originator-03"
+     ipr="trust200902">
+  <front>
+    <title abbrev="OSPF Prefix Originator">OSPF Extension for Prefix
+    Originator</title>
+
+    <author fullname="Aijun Wang" initials="A" surname="Wang">
+      <organization>China Telecom</organization>
+
+      <address>
+        <postal>
+          <street>Beiqijia Town, Changping District</street>
+
+          <city>Beijing</city>
+
+          <region/>
+
+          <code>102209</code>
+
+          <country>China</country>
+        </postal>
+
+        <email>wangaj3@chinatelecom.cn</email>
+      </address>
+    </author>
+
+    <author fullname="Acee Lindem" initials="A" surname="Lindem">
+      <organization>Cisco Systems</organization>
+
+      <address>
+        <postal>
+          <street>301 Midenhall Way</street>
+
+          <city>Cary</city>
+
+          <region>NC</region>
+
+          <code>27513</code>
+
+          <country>USA</country>
+        </postal>
+
+        <email>acee@cisco.com</email>
+      </address>
+    </author>
+
+    <author fullname="Jie Dong" initials="J" surname="Dong">
+      <organization>Huawei Technologies</organization>
+
+      <address>
+        <postal>
+          <street/>
+
+          <city>Beijing</city>
+
+          <region/>
+
+          <code/>
+
+          <country>China</country>
+        </postal>
+
+        <email>jie.dong@huawei.com</email>
+      </address>
+    </author>
+
+    <author fullname="Peter Psenak" initials="P" surname="Psenak">
+      <organization>Cisco Systems</organization>
+
+      <address>
+        <postal>
+          <street>Pribinova Street 10</street>
+
+          <city>Bratislava</city>
+
+          <region>Eurovea Centre, Central 3</region>
+
+          <code>81109</code>
+
+          <country>Slovakia</country>
+        </postal>
+
+        <phone/>
+
+        <facsimile/>
+
+        <email>ppsenak@cisco.com</email>
+
+        <uri/>
+      </address>
+    </author>
+
+    <author fullname="Ketan Talaulikar" initials="K" surname="Talaulikar">
+      <organization>Cisco Systems</organization>
+
+      <address>
+        <postal>
+          <street>S.No. 154/6, Phase I, Hinjawadi</street>
+
+          <city>Pune</city>
+
+          <region/>
+
+          <code>411 057</code>
+
+          <country>India</country>
+        </postal>
+
+        <email>ketant@cisco.com</email>
+      </address>
+    </author>
+
+    <date day="27" month="August" year="2019"/>
+
+    <area>RTG Area</area>
+
+    <workgroup>LSR Working Group</workgroup>
+
+    <keyword>RFC</keyword>
+
+    <abstract>
+      <t>This document describes Open Shortest Path First (OSPF) v2 and OSPFv3
+      encodings to advertise the router-id of the originator of inter-area
+      prefixes for OSPFv2 and OSPFv3 Link-State Advertisement (LSA), which are
+      needed in several use cases in multi-area OSPF use cases.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="section-1" title="Introduction">
+      <t><xref target="I-D.ietf-ospf-mpls-elc"/> defines mechanisms to Entropy
+      Readable Label Depth (ERLD) for ingress Label Switching Router (LSR) to
+      discover each LSR's capability of performing Entropy Label (EL) -based
+      load-balancing in Multi Protocol Label Switch (MPLS) networks. The
+      ingress LSR can use this information to push the appropriate label stack
+      for specific traffic, especially in segment routing environments and
+      other stacked LSPs scenarios.</t>
+
+      <t>However, in inter-area scenarios, the Area Border Router (ABR) does
+      not advertise the originating OSPF router-id for inter-area prefixes. An
+      OSPF router in one area doesn't know where the prefixes really came from
+      and can't determine the router that originated inter-area prefixes and
+      then can't judge the ERLD capabilities of the destination. It is
+      necessary to transfer the originator information of these inter-area
+      prefixes to ensure the ingress LSR constructs the right label stack.</t>
+
+      <t>More generally, <xref target="RFC8476"/> defines a mechanism to
+      advertise multiple types of supported Maximum SID Depths (MSD) at node
+      and/or link granularity. This information will be referred when the
+      head-end router starts to send traffic to destination prefixes. In
+      inter-area scenario, it is also necessary for the sender to learn the
+      capabilities of the receivers associated with the inter-area
+      prefixes.</t>
+
+      <t>There is also another scenario where knowing the originator of
+      inter-area prefixes is useful. For example, Border Gateway Protocol
+      Link-State (BGP-LS) <xref target="RFC7752"/> describes mechanisms using
+      the BGP protocol to advertise Link-State information. This can enable an
+      Software Definition Network (SDN) controller to collect the underlay
+      network topology automatically.</t>
+
+      <t>But if the underlay network is divided into multiple areas and
+      running the OSPF protocol, it is not easy for the SDN controller to
+      rebuild the multi-area topology, because normally an ABR that connects
+      multiple areas will hide the detailed topology information for these
+      non-backbone areas. If only the internal routers within backbone area
+      run the BGP-LS protocol, they just learn and report the summary network
+      information from the non-backbone areas. If the SDN controller can learn
+      the originator of the inter-area prefixes, it is possible to rebuild the
+      inter-area topology automatically.</t>
+
+      <t><xref target="RFC7794"/> introduces the Intermediate System to
+      Intermediate System (IS-IS) &ldquo;IPv4/IPv6 Source Router IDs&rdquo;
+      Type-Length-Value (TLV) to advertise the source of the prefixes
+      redistributed from a different IS-IS level. This TLV can be used in the
+      above scenarios. Such solution can also be applied in networks that run
+      the OSPF protocol, but the related LSAs TLV must be extended.</t>
+
+      <t>This draft provides such solution for the OSPFv2 and OSPFv3
+      protocols.</t>
+    </section>
+
+    <section title="Conventions used in this document">
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+      "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+      document are to be interpreted as described in <xref target="RFC2119"/>
+      .</t>
+    </section>
+
+    <section title="Terminology">
+      <t>The following terms are used in this document:<list style="symbols">
+          <t>ABR: Area Border Router</t>
+
+          <t>ERLD: Entropy Readable Label Depth</t>
+
+          <t>EL: Entropy Label</t>
+
+          <t>IS-IS: Intermediate System to Intermediate System</t>
+
+          <t>LSA: Link-State Advertisement</t>
+
+          <t>MSD: Maximum SID Depths</t>
+
+          <t>NLRI: Network Layer Reachability Information</t>
+
+          <t>OSPF: Open Shortest Path First</t>
+
+          <t>SID: Segment IDentifier</t>
+
+          <t>SDN: Software Definition Network</t>
+        </list></t>
+    </section>
+
+    <section title="Conventions used in this document">
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+      "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+      document are to be interpreted as described in <xref target="RFC2119"/>
+      .</t>
+    </section>
+
+    <section title="Scenario Description">
+      <t>Figure 1 illustrates the topology scenario when OSPF is running in
+      multi-area. R0-R4 are routers in backbone area, S1-S4,T1-T4 are internal
+      routers in area 1 and area 2 respectively. R1 and R3 are area border
+      routers between area 0 and area 1. R2 and R4 are area border routers
+      between area 0 and area 2. N1 is the network between router S1 and S2
+      and N2 is the network between router T1 and T2. Ls1 is the loopback
+      address of Node S1 and Lt1 is the loopback address of Node T1.</t>
+
+      <t><figure>
+          <artwork align="center"><![CDATA[                     +-----------------+
+                     |IP SDN Controller|
+                     +--------+--------+
+                              |
+                              | BGP-LS
+                              |
+ +---------------------+------+--------+-----+--------------+
+ | +--+        +--+   ++-+   ++-+    +-++   + -+        +--+|
+ | |S1+--------+S2+---+R1+---|R0+----+R2+---+T1+--------+T2||
+ | +-++   N1   +-++   ++-+   +--+    +-++   ++++   N2   +-++|
+ |   |           |     |               |     ||           | |
+ |   |           |     |               |     ||           | |
+ | +-++        +-++   ++-+           +-++   ++++        +-++|
+ | |S4+--------+S3+---+R3+-----------+R4+---+T3+--------+T4||
+ | +--+        +--+   ++-+           +-++   ++-+        +--+|
+ |                     |               |                    |
+ |                     |               |                    |
+ |         Area 1      |     Area 0    |      Area 2        |
+ +---------------------+---------------+--------------------+
+
+       Figure 1: OSPF Inter-Area Prefix Originator Scenario
+]]></artwork>
+        </figure></t>
+
+      <t>If S1 wants to send traffic to prefix Lt1 that is connected T1 in
+      another area, it should know the ERLD, and MSD values that are
+      associated with the node T1, and then construct the right label stack at
+      the ingress node for the target traffic.</t>
+
+      <t>In another scenario, If R0 has some method to learn the originator of
+      network N1 and reports such information to IP SDN controller, then it is
+      possible for the controller to retrieval the topology in non-backbone
+      area. The topology retrieval process and its usage limitation are
+      described in the <xref target="Appendix-A"/> and <xref
+      target="Appendix-B"/> .</t>
+
+      <t>From the above scenarios, we can conclude it is useful to introduce
+      and define the prefix originator sub TLV within OSPF.</t>
+    </section>
+
+    <section anchor="section-6" title="Prefix Source Router-ID sub-TLV">
+      <t><xref target="RFC7684"/> and <xref target="RFC8362"/> define the TLV
+      extensions for OSPFv2 and OSPFv3 respectively. These documents
+      facilitate addition of new attributes for prefixes. Based on these
+      formats, we can define new sub-TLV to advertise the &ldquo;Prefix Source
+      Router ID&rdquo;, as that defined in <xref target="RFC7794"/>.</t>
+
+      <t>The &ldquo;Prefix Source Router-ID&rdquo; sub-TLV has the following
+      format:</t>
+
+      <figure>
+        <artwork><![CDATA[ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |               Type            |              Length           |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                Prefix Source Router-ID                        |
+ +---------------------------------------------------------------+
+        Figure 2: Prefix Source Router-ID sub-TLV Format
+   ]]></artwork>
+      </figure>
+
+      <t><list style="symbols">
+          <t>Source Router-ID Sub-TLV Type: TBD1<xref target="RFC7684"/> or
+          TBD2 <xref target="RFC8362"/></t>
+
+          <t>Length: 4</t>
+
+          <t>Value: Router-ID of OSPFv2/OSPFv3 source router</t>
+        </list>For OSPFv2, this sub-TLV is a sub-TLV of OSPFv2 Extended Prefix
+      TLV, which SHOULD be included in the &ldquo;OSPFv2 Extended Prefix
+      Opaque LSA&rdquo; .</t>
+
+      <t>For OSPFv3, this sub-TLV is a sub-TLV of "Inter-Area-Prefix TLV",
+      which SHOULD be included in the "E-Inter-Area-Prefix-LSA".</t>
+    </section>
+
+    <section title="Extended LSA Elements of Procedure">
+      <t>When an ABR, for example R2 in Figure 1, receives the Router-LSA
+      announcement in area 2, it should originate the corresponding
+      &ldquo;OSPFv2 Extended Prefix Opaque LSA&rdquo; for OSPFv2 or
+      &ldquo;E-Inter-Area-Prefix-LSA&rdquo; for OSPFv3 that includes the
+      Source Router-ID sub-TLV for the network prefixes, e.g., for prefix Lt1,
+      N2. etc., which identifies the source router that advertised the
+      prefix.</t>
+
+      <t>When S1 in another area receives such LSA, it then can learn that
+      prefix Lt1 is associated with node T1, check the ERLD, or MSD value
+      according to its necessity, and construct the right label stack at the
+      ingress node S1 for the traffic destined to Lt1.</t>
+
+      <t>When R0 receives such LSA, it learns the Prefix Source Router-id and
+      includes it in the prefix information advertised to an SDN controller as
+      described in<xref target="I-D.ietf-idr-bgp-ls-segment-routing-ext">
+      </xref>. The SDN controller can then use such information to build the
+      inter-area topology according to the process described in the <xref
+      target="Appendix-A"/>. The topology retrieval process may not suitable
+      for some environments as stated in <xref target="Appendix-B"/>.</t>
+    </section>
+
+    <section title="Security Considerations">
+      <t>Security concerns for OSPF are addressed in <xref
+      target="RFC5709"/></t>
+
+      <t>Advertisement of the additional information defined in this document
+      introduces no new security concerns</t>
+    </section>
+
+    <section title="IANA Considerations">
+      <t>This specification defines one Prefix Source Router-ID sub-TLV as
+      described in <xref target="section-6"/>. This value should be added to
+      the existing "OSPFv2 Extended Prefix TLV Sub-TLVs" registry and "OSPFv3
+      Extended-LSA Sub-TLVs registry" respectively.</t>
+
+      <t>The following new sub-TLV is added to the registry of "OSPFv2
+      Extended Prefix TLV Sub-TLVs". The allocation policy is IETF Review that
+      defined in <xref target="RFC7684"/></t>
+
+      <figure>
+        <artwork><![CDATA[+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++++++++
+|    Code Point  |   Description         |           Status            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++++++++
+|       TBD      | Prefix Source Sub-TLV |   Allocation from IANA      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++++++++
+Figure 3:  CodePoint in "OSPFv2 Extended Prefix TLV Sub-TLVs"
+]]></artwork>
+      </figure>
+
+      <t/>
+
+      <t>The following new sub-TLV is added to the registry of "OSPFv3
+      Extended-LSA Sub-TLVs". The allocation policy is IETF Review that
+      defined in <xref target="RFC8362"/></t>
+
+      <t><figure>
+          <artwork><![CDATA[+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++++++++
+|    Code Point  |   Description         |           Status            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++++++++
+|       TBD      | Prefix Source Sub-TLV |   Allocation from IANA      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++++++++
+Figure 4:  CodePoint in "OSPFv3 Extended-LSA Sub-TLVs"
+]]></artwork>
+        </figure></t>
+    </section>
+
+    <section title="Acknowledgement">
+      <t>Many thanks to Les Ginsberg for his valuable suggestions on this
+      draft. And also thanks Jeff Tantsura,Rob Shakir, Van De Velde Gunter,
+      Goethals Dirk, Shaofu Peng, John E Drake for their valuable comments on
+      this draft.</t>
+    </section>
+  </middle>
+
+  <back>
+    <references title="Normative References">
+      <?rfc include="reference.RFC.2119"?>
+
+      <?rfc include="reference.RFC.5709"?>
+
+      <?rfc include="reference.RFC.7684"?>
+
+      <?rfc include="reference.RFC.7752"?>
+
+      <?rfc include="reference.RFC.7794"?>
+
+      <?rfc include="reference.RFC.8362"?>
+
+      <?rfc include="reference.RFC.8476"?>
+    </references>
+
+    <references title="Informative References">
+      <?rfc include="reference.I-D.ietf-idr-bgp-ls-segment-routing-ext"?>
+
+      <?rfc include="reference.I-D.ietf-ospf-mpls-elc" ?>
+    </references>
+
+    <section anchor="Appendix-A" title="Inter-Area Topology Retrieval Process">
+      <t>When an IP SDN Controller receives this information, it should
+      compare the prefix Network Layer Reachability Information (NLRI) that
+      included in the BGP-LS packet. When it encounters the same prefix but
+      with different source router ID, it should extract the corresponding
+      area-ID, rebuild the link between these two different source routers in
+      non-backbone area. Belows is one example that based on the Figure 1:</t>
+
+      <t>Assuming we want to rebuild the connection between router S1 and
+      router S2 that locates in area 1:</t>
+
+      <t><list style="letters">
+          <t>Normally, router S1 will advertise prefix N1 within its
+          router-LSA.</t>
+
+          <t>When this router-LSA reaches the ABR router R1, it will convert
+          it into summary-LSA, add the Prefix Source Router-ID sub-TLV, which
+          is router id of S1 in this example.</t>
+
+          <t>R1 then floods this extension summary-LSA to R0, which is running
+          BGP-LS protocol with IP SDN Controller. The controller then knows
+          the prefixes of N1 is from S1.</t>
+
+          <t>Router S2 will do the similar process, and the controller will
+          also learn that prefixes N1 is also from S2.</t>
+
+          <t>Then it can reconstruct the link between S1 and S2, using the
+          prefix N1. The topology within Area 1 can then be reconstructed
+          accordingly.</t>
+        </list></t>
+
+      <t>Iterating the above process continuously, the IP SDN controller can
+      retrieve a detailed topology that spans multiple areas.</t>
+    </section>
+
+    <section anchor="Appendix-B"
+             title="Special Considerations on Inter-Area Topology Retrieval ">
+      <t>The above topology retrieval process can be applied in the case where
+      each link between routers is assigned a unique prefix. However, there
+      are some situations where this heuristic cannot be applied.
+      Specifically, the cases where the link is unnumbered or the prefix
+      corresponding to the link is an anycast prefix.</t>
+
+      <t>The <xref target="Appendix-A"/> heuristic to rebuild the topology can
+      normally be used if all links are numbered. For anycast prefixes, if it
+      corresponds to the loopback interface and has a host prefix length,
+      i.e., 32 for IPv4 prefixes and 128 for IPv6 prefixes, <xref
+      target="Appendix-A"/> can also apply.</t>
+    </section>
+  </back>
+</rfc>
