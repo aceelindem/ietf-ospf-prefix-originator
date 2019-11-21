@@ -193,7 +193,7 @@
       protocol, but existing OSPF LSAs TLVs must be extended to include the
       router originating the prefix.</t>
 
-      <t>This draft provides such solution for the OSPFv2 <xref target="RFC2328">
+      <t>This draft provides such solution for the OSPFv2 <xref target="RFC2328"/>
       and OSPFv3 <xref target="RFC5340"/> protocols.</t>
     </section>
 
